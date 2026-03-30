@@ -9,6 +9,8 @@ import com.ecommerce.inventory_service.repository.InventoryRepository;
 import com.ecommerce.inventory_service.service.InventoryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,14 +21,23 @@ import java.util.stream.Collectors;
 @Log4j2
 @Service
 @RequiredArgsConstructor
+@RefreshScope
 public class InventoryServiceImpl implements InventoryService {
 
     private final InventoryRepository inventoryRepository;
     private final InventoryMapper inventoryMapper;
 
+    @Value("${inventory.allow-backorders:false}")
+    private boolean allowBackorders;
+
     @Override
     @Transactional(readOnly = true)
     public boolean isInStock(String sku, Integer quantity) {
+
+        if(allowBackorders){
+            log.warn("MODO BACKORDER ACTIVO: Autoriza stock para SKU: {}", sku);
+            return true;
+        }
 
         Inventory inventory = inventoryRepository
                 .findBySku(sku)
@@ -54,10 +65,6 @@ public class InventoryServiceImpl implements InventoryService {
     public InventoryResponseDTO getInventoryBySku(String sku) {
 
         log.info("Buscando inventory por SKU:{}", sku);
-
-        if(inventoryRepository.existsBySku(sku)){
-            throw new ResourceNotFoundException("No se encontró el inventario con el SKU: " + sku);
-        }
 
         Inventory inventory = inventoryRepository.findBySku(sku)
                 .orElseThrow(() -> new ResourceNotFoundException("Error al buscar el inventario por sku: " + sku));
