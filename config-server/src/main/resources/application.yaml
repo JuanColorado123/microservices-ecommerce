@@ -1,12 +1,16 @@
 spring:
   application:
     name: config-server
+
   cloud:
     config:
       server:
         git:
-          uri: C:\Users\ADMIN\Documents\Proyectos\ecommerce\microservices-ecommerce\config-data
+          username: ${GITHUB_USER}
+          password: ${GITHUB_TOKEN}
+          uri: file:///C:/Users/ADMIN/Documents/Proyectos/ecommerce/microservices-ecommerce/config-data
           clone-on-start: true
           default-label: main
+
 server:
   port: 8888
