@@ -4,8 +4,10 @@ import com.ecommerce.inventory_service.dto.ApiResponse;
 import com.ecommerce.inventory_service.dto.InventoryRequestDTO;
 import com.ecommerce.inventory_service.dto.InventoryResponseDTO;
 import com.ecommerce.inventory_service.service.InventoryService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("api/v1/inventories")
 @RequiredArgsConstructor
@@ -45,7 +48,9 @@ public class InventoryController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<InventoryResponseDTO>>> getAllInvetories(){
+    public ResponseEntity<ApiResponse<List<InventoryResponseDTO>>> getAllInvetories(HttpServletRequest request){
+
+        log.info("Petición atendida desde el puerto: {}", request.getServerPort() );
 
         List<InventoryResponseDTO> inventoryResponseDTOList = inventoryService.getAllInventories();
 
