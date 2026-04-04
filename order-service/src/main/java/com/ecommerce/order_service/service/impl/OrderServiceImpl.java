@@ -2,18 +2,22 @@ package com.ecommerce.order_service.service.impl;
 
 import com.ecommerce.order_service.dto.OrderRequest;
 import com.ecommerce.order_service.dto.OrderResponse;
+import com.ecommerce.order_service.exception.HandleServiceConnectionFailure;
 import com.ecommerce.order_service.exception.ResourceNotFoundException;
 import com.ecommerce.order_service.mapper.OrderMapper;
 import com.ecommerce.order_service.model.Order;
 import com.ecommerce.order_service.repository.OrderRepository;
 import com.ecommerce.order_service.service.OrderService;
 import com.ecommerce.order_service.service.client.InventoryClient;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.util.List;
 import java.util.UUID;
@@ -33,11 +37,13 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
+    @CircuitBreaker(name = "inventory", fallbackMethod = "fallbackMethod")
+    @Retry(name = "inventory")
     public OrderResponse placeOrder(OrderRequest orderRequest, String userId) {
 
         if (!ordersEnable){
             log.warn("Pedido  rechazado: Servicio deshabilitado por configuración");
-            throw new RuntimeException("Pedido  rechazado: Servicio deshabilitado por configuración");
+            throw new HandleServiceConnectionFailure("Pedido  rechazado: Servicio deshabilitado por configuración");
         }
         log.info("Colocando nueva orden...");
 
@@ -52,16 +58,14 @@ public class OrderServiceImpl implements OrderService {
 
             try {
 
-                log.info("Iniciando llamado al servicio inventory-service para el sku {}, con cantidad de : {}",sku,quantity);
+                log.info("Iniciando llamado al servicio inventory-service para el sku {}, con cantidad de : {}", sku, quantity);
 
                 inventoryClient.reduceStock(sku, quantity);
 
-                log.info("Finalizando llamado al servicio inventory-service para el sku {}, con cantidad de : {}",sku,quantity);
-            }catch (Exception ex){
+                log.info("Finalizando llamado al servicio inventory-service para el sku {}, con cantidad de : {}", sku, quantity);
+            } catch (WebClientResponseException.BadRequest ex) {
 
-                log.error("Error llamando al servicio inventory-service para reducir stock para el producto: {}, {}", sku, ex.getMessage());
-
-                throw new IllegalArgumentException("No se pudo procesar la orden:Stock insuficiente o error de inventario");
+                throw new IllegalArgumentException("Stock insuficiente para el producto: " + sku);
             }
         }
         order.setOrderNumber(UUID.randomUUID().toString());
@@ -105,5 +109,11 @@ public class OrderServiceImpl implements OrderService {
         }
         orderRepository.deleteById(id);
         log.info("Orden eliminada. ID: {}", id);
+    }
+
+    public OrderResponse fallbackMethod(OrderRequest orderRequest, String userId, Throwable throwable){
+        log.error("Circuit Breaker activado. Causa: {}", throwable.getMessage());
+
+        throw new HandleServiceConnectionFailure("Inventory service no disponible");
     }
 }
