@@ -8,10 +8,13 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/orders")
@@ -22,9 +25,11 @@ public class OrderController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<OrderResponse>> placeOrder(
-            @Valid @RequestBody OrderRequest orderRequest) {
+            @Valid @RequestBody OrderRequest orderRequest,
+            @AuthenticationPrincipal Jwt jtw
+    ) {
 
-        OrderResponse order = orderService.placeOrder(orderRequest);
+        OrderResponse order = orderService.placeOrder(orderRequest, jtw.getSubject());
 
         ApiResponse<OrderResponse> response = new ApiResponse<>(
                 true,
@@ -38,9 +43,21 @@ public class OrderController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<OrderResponse>>> getAllOrders() {
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<ApiResponse<List<OrderResponse>>> getAllOrders(@AuthenticationPrincipal Jwt jwt) {
 
-        List<OrderResponse> orders = orderService.getAllOrders();
+        String userId = jwt.getSubject();
+        boolean isAdmin = false;
+
+        Map<String,Object> realmAccess = jwt.getClaim("realm_access");
+
+        if(realmAccess != null  && realmAccess.containsKey("roles")){
+            List<String> roles = (List<String>) realmAccess.get("roles");
+
+            isAdmin = roles.stream().anyMatch(role -> role.equals("ADMIN"));
+        }
+
+        List<OrderResponse> orders = orderService.getAllOrders(userId,isAdmin);
 
         ApiResponse<List<OrderResponse>> response = new ApiResponse<>(
                 true,

@@ -33,7 +33,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderResponse placeOrder(OrderRequest orderRequest) {
+    public OrderResponse placeOrder(OrderRequest orderRequest, String userId) {
 
         if (!ordersEnable){
             log.warn("Pedido  rechazado: Servicio deshabilitado por configuración");
@@ -42,6 +42,7 @@ public class OrderServiceImpl implements OrderService {
         log.info("Colocando nueva orden...");
 
         Order order = orderMapper.toOrder(orderRequest);
+        order.setUserId(userId);
 
         for (var item: order.getOrderLineItemsList()){
 
@@ -73,8 +74,17 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderResponse> getAllOrders() {
-        return orderRepository.findAll().stream()
+    public List<OrderResponse> getAllOrders(String userId, boolean isAdmin) {
+
+        List<Order> orders;
+
+        if (isAdmin){
+            orders = orderRepository.findAll();
+        }else{
+            orders = orderRepository.findByUserId(userId);
+        }
+
+        return orders.stream()
                 .map(orderMapper::toOrderResponse)
                 .toList();
     }
