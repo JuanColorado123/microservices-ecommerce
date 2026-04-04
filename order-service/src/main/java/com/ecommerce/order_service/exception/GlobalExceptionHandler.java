@@ -69,4 +69,20 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
+
+    @ExceptionHandler(HandleServiceConnectionFailure.class)
+    public ResponseEntity<ApiResponse<Object>> handleServiceConnectionFailure(Exception ex, WebRequest webRequest){
+
+        log.warn("Ha ocurrido un error de conexion {}, message: {}", webRequest.getDescription(false), ex.getMessage(), ex);
+
+        ApiResponse<Object> response = new ApiResponse<>(
+                false,
+                "Ha ocurrido un error de conexión con el servicio-inventory. Por favor, intente nuevamente más tarde o contacte a soporte.",
+                HttpStatus.SERVICE_UNAVAILABLE.value(),
+                null,
+                LocalDateTime.now()
+        );
+
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
+    }
 }
