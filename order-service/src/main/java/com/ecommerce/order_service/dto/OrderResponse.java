@@ -4,6 +4,7 @@ import java.util.List;
 
 public record OrderResponse(
         Long id,
+        String userId,
         String orderNumber,
         List<OrderLineItemsResponse> orderLineItemsList
 ) {
