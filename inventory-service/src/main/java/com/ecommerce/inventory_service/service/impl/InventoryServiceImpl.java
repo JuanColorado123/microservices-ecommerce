@@ -142,6 +142,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("No se encontró el inventario con el SKU: " + sku)
                 );
+
         if (inventory.getQuantity() <  quantity){
             throw new RuntimeException("Stock insuficiente para: " + sku);
         }
