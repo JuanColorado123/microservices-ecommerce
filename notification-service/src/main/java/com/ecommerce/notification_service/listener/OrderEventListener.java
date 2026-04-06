@@ -1,5 +1,6 @@
 package com.ecommerce.notification_service.listener;
 
+import com.ecommerce.notification_service.event.OrderCancelledEvent;
 import com.ecommerce.notification_service.event.OrderPlaceEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,8 +17,7 @@ public class OrderEventListener {
     private final JavaMailSender mailSender;
 
     @RabbitListener(queues = "notification-queue")
-    public void handlerOrderPlacedEvent(OrderPlaceEvent event) {
-
+    public void handlerOrderConfirmedEvent(OrderPlaceEvent event) {
         log.info("Evento recibido en notification para la orden: {}", event.orderNumber());
 
         try {
@@ -32,6 +32,26 @@ public class OrderEventListener {
 
         } catch (Exception e) {
             log.error("Error al enviar el correo a {}: {}", event.email(), e.getMessage());
+        }
+    }
+
+    @RabbitListener(queues = "notification-queue")
+    public void handlerOrderCancelledEvent(OrderCancelledEvent event) {
+
+        log.info("Evento recibido de cancelacion en notification para la orden: {}", event.orderNumber());
+
+        try {
+
+            SimpleMailMessage mailMessage = getCancelledMailMessage(event);
+
+            log.info("Enviando correo de cancelación a: {}", event.email());
+
+            mailSender.send(mailMessage);
+
+            log.info("Correo enviado correctamente de cancelacion a: {}", event.email());
+
+        } catch (Exception e) {
+            log.error("Error al enviar el correo cancelacion a {}: {}", event.email(), e.getMessage());
         }
     }
 
@@ -66,6 +86,40 @@ public class OrderEventListener {
         mailMessage.setText(mensaje);
         return mailMessage;
     }
+
+    private SimpleMailMessage getCancelledMailMessage(OrderCancelledEvent event) {
+
+        SimpleMailMessage mailMessage = new SimpleMailMessage();
+        mailMessage.setFrom("bogotaFast123@gmail.com");
+        mailMessage.setTo(event.email());
+        mailMessage.setSubject("Orden cancelada - " + event.orderNumber());
+
+        String mensaje = String.format(
+                CANCELLED_TEMPLATE,
+                event.orderNumber(),
+                event.reason()
+        );
+
+        mailMessage.setText(mensaje);
+
+        return mailMessage;
+    }
+
+    private static final String CANCELLED_TEMPLATE = """
+        Estimado cliente,
+
+        Lamentamos informarle que su orden ha sido cancelada.
+
+        Número de orden: %s
+
+        Motivo de la cancelación:
+        %s
+
+        Si tiene alguna inquietud o desea más información, puede responder a este correo.
+
+        Atentamente,
+        Equipo BogotáFast
+        """;
 
     private static final String EMAIL_TEMPLATE = """
             Estimado cliente,

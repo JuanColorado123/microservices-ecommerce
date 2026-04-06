@@ -6,6 +6,7 @@ public record OrderResponse(
         Long id,
         String userId,
         String orderNumber,
+        String status,
         List<OrderLineItemsResponse> orderLineItemsList
 ) {
 }

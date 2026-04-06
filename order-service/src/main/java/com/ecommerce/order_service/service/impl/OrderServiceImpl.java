@@ -7,6 +7,7 @@ import com.ecommerce.order_service.exception.HandleServiceConnectionFailure;
 import com.ecommerce.order_service.exception.ResourceNotFoundException;
 import com.ecommerce.order_service.mapper.OrderMapper;
 import com.ecommerce.order_service.model.Order;
+import com.ecommerce.order_service.model.OrderStatus;
 import com.ecommerce.order_service.repository.OrderRepository;
 import com.ecommerce.order_service.service.OrderService;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +17,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.util.List;
 import java.util.UUID;
@@ -50,7 +50,7 @@ public class OrderServiceImpl implements OrderService {
         order.setUserId(userId);
 
         order.setOrderNumber(UUID.randomUUID().toString());
-
+        order.setStatus(OrderStatus.PLACED);
         Order savedOrder = orderRepository.save(order);
         log.info("Orden guardada con éxito. ID: {}", savedOrder.getId());
 
@@ -70,6 +70,20 @@ public class OrderServiceImpl implements OrderService {
         log.info("Evento enviado a RabbitMQ para su procesamiento. ID: {}", savedOrder.getId());
 
         return orderMapper.toOrderResponse(savedOrder);
+    }
+
+    @Override
+    @Transactional
+    public void updateOrderByOderNumber(OrderStatus orderStatus,String orderNumber) {
+
+       Order order = orderRepository
+                .findByOrderNumber(orderNumber)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("No se encontró la order con el numero: " + orderNumber )
+                );
+
+       order.setStatus(orderStatus);
+       orderRepository.save(order);
     }
 
     @Override
