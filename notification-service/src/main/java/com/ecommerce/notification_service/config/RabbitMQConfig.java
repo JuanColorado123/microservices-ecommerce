@@ -2,7 +2,6 @@ package com.ecommerce.notification_service.config;
 
 import com.ecommerce.notification_service.event.OrderCancelledEvent;
 import com.ecommerce.notification_service.event.OrderConfirmedEvent;
-import com.ecommerce.notification_service.event.OrderPlaceEvent;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.support.converter.DefaultClassMapper;
 import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
