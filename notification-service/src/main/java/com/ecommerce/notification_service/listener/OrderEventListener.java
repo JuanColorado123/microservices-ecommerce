@@ -4,6 +4,7 @@ import com.ecommerce.notification_service.event.OrderCancelledEvent;
 import com.ecommerce.notification_service.event.OrderPlaceEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.annotation.RabbitHandler;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -12,47 +13,39 @@ import org.springframework.stereotype.Component;
 @Component
 @Slf4j
 @RequiredArgsConstructor
+@RabbitListener(queues = "notification-queue")
 public class OrderEventListener {
 
     private final JavaMailSender mailSender;
 
-    @RabbitListener(queues = "notification-queue")
+    @RabbitHandler
     public void handlerOrderConfirmedEvent(OrderPlaceEvent event) {
         log.info("Evento recibido en notification para la orden: {}", event.orderNumber());
 
-        try {
 
-            SimpleMailMessage mailMessage = getSimpleMailMessage(event);
+        SimpleMailMessage mailMessage = getSimpleMailMessage(event);
 
-            log.info("Enviando correo de confirmación a: {}", event.email());
+        log.info("Enviando correo de confirmación a: {}", event.email());
 
-            mailSender.send(mailMessage);
+        mailSender.send(mailMessage);
 
-            log.info("Correo enviado correctamente a: {}", event.email());
+        log.info("Correo enviado correctamente a: {}", event.email());
 
-        } catch (Exception e) {
-            log.error("Error al enviar el correo a {}: {}", event.email(), e.getMessage());
-        }
     }
 
-    @RabbitListener(queues = "notification-queue")
+    @RabbitHandler
     public void handlerOrderCancelledEvent(OrderCancelledEvent event) {
 
         log.info("Evento recibido de cancelacion en notification para la orden: {}", event.orderNumber());
 
-        try {
+        SimpleMailMessage mailMessage = getCancelledMailMessage(event);
 
-            SimpleMailMessage mailMessage = getCancelledMailMessage(event);
+        log.info("Enviando correo de cancelación a: {}", event.email());
 
-            log.info("Enviando correo de cancelación a: {}", event.email());
+        mailSender.send(mailMessage);
 
-            mailSender.send(mailMessage);
+        log.info("Correo enviado correctamente de cancelacion a: {}", event.email());
 
-            log.info("Correo enviado correctamente de cancelacion a: {}", event.email());
-
-        } catch (Exception e) {
-            log.error("Error al enviar el correo cancelacion a {}: {}", event.email(), e.getMessage());
-        }
     }
 
     private static SimpleMailMessage getSimpleMailMessage(OrderPlaceEvent event) {
