@@ -26,7 +26,7 @@ public class RabbitMQConfig {
 
         Map<String, Class<?>> idClassMapping = new HashMap<>();
 
-        idClassMapping.put("com.ecommerce.inventory_service.event.OrderPlaceEvent", OrderConfirmedEvent.class);
+        idClassMapping.put("com.ecommerce.inventory_service.event.OrderConfirmedEvent", OrderConfirmedEvent.class);
         idClassMapping.put("com.ecommerce.inventory_service.event.OrderCancelledEvent", OrderCancelledEvent.class);
 
         classMapper.setIdClassMapping(idClassMapping);

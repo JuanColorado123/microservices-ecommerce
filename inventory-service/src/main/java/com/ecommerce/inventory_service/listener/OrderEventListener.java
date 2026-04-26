@@ -1,6 +1,7 @@
 package com.ecommerce.inventory_service.listener;
 
 import com.ecommerce.inventory_service.event.OrderCancelledEvent;
+import com.ecommerce.inventory_service.event.OrderConfirmedEvent;
 import com.ecommerce.inventory_service.event.OrderPlaceEvent;
 import com.ecommerce.inventory_service.service.InventoryService;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +19,7 @@ public class OrderEventListener {
     private final RabbitTemplate rabbitTemplate;
 
     @RabbitListener(queues = "inventory-queue")
-    public void HandlerOrderPlacedEvent(OrderPlaceEvent event){
+    public void handleOrderPlacedEvent(OrderPlaceEvent event){
 
         log.info("Evento recibido en inventario para la orden: {}", event.orderNumber());
 
@@ -40,7 +41,10 @@ public class OrderEventListener {
 
             event.items().forEach(item -> inventoryService.reduceStock(item.sku(), item.quantity()));
 
-            rabbitTemplate.convertAndSend("order-events", "order.confirmed", event);
+
+            OrderConfirmedEvent confirmedEvent = new OrderConfirmedEvent(event.orderNumber(), event.email());
+
+            rabbitTemplate.convertAndSend("order-events", "order.confirmed", confirmedEvent);
             log.info("Stock descontando para SKU: {}", event.orderNumber());
         } catch (Exception e) {
             log.error("Error inesperado{} : {}", event.orderNumber(),e.getMessage());

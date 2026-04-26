@@ -10,8 +10,10 @@ import com.ecommerce.order_service.model.Order;
 import com.ecommerce.order_service.model.OrderStatus;
 import com.ecommerce.order_service.repository.OrderRepository;
 import com.ecommerce.order_service.service.OrderService;
+import com.ecommerce.order_service.service.OutBoxEventsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
@@ -30,6 +32,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final OrderMapper orderMapper;
     private final RabbitTemplate rabbitTemplate;
+    private final OutBoxEventsService outBoxEventsService;
 
     @Value("${order.enable:true}")
     private boolean ordersEnable;
@@ -66,7 +69,19 @@ public class OrderServiceImpl implements OrderService {
 
         OrderPlaceEvent orderPlaceEvent = new OrderPlaceEvent(savedOrder.getOrderNumber(), orderRequest.email(), orderLineItem);
 
-        rabbitTemplate.convertAndSend("order-events", "order.placed", orderPlaceEvent);
+        boolean sendToRabbit = false;
+
+        try {
+            rabbitTemplate.convertAndSend("order-events", "order.placed", orderPlaceEvent);
+            sendToRabbit = true;
+            log.error("Llamado con exitoso RabbitMQ enviando: {}", savedOrder.getId());
+
+        } catch (AmqpException e) {
+            log.error("Llamado fallido a RabbitMQ, no se encuentra en servicio: {}", savedOrder.getId());
+        }
+
+        outBoxEventsService.saveOrderPlacedEvent(orderPlaceEvent, sendToRabbit);
+
         log.info("Evento enviado a RabbitMQ para su procesamiento. ID: {}", savedOrder.getId());
 
         return orderMapper.toOrderResponse(savedOrder);
